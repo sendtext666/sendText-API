@@ -64,7 +64,7 @@ function insertNumber(number) {
 function sendText(number) {
     callers.messages
     .create({
-        body: 'This is the ship that made the Kessel Run in fourteen parsecs?',
+        body:  'PeZ - Antitrust 2020:  \n \n https://pezsociety.bandcamp.com/',
         from: '+19528003312',
         to: number
      })
@@ -120,6 +120,24 @@ app.delete('/phoneNumber/:id', (req, res, next) => {
         next(err)
     }
 });
+
+const testArr = ['+13522354609', '+13528702887', '+13522818053', '+19044421242']
+// get all numbers 
+app.get('/sendTexts', (req, res) => {
+    try {
+        // dbo.collection("numbers").find({}).toArray(function(err, result) {
+        //     if (err) throw err;
+        //     res.send(result)
+        //     console.log(result);
+        // });
+        testArr.forEach((num) => {
+            sendText(num)
+            // console.log(num);
+        })
+    } catch (err) {
+        next(err)
+    }
+})
 
 
 
