@@ -3,7 +3,7 @@ const client = new MongoClient(process.env.MONGO_URL, { useNewUrlParser: true })
 const express = require('express')
 const bodyParser = require('body-parser');
 const path = require('path')
-require('dotenv').config({ path: path.resolve(__dirname, '../.env') })
+require('dotenv').config({ path: path.resolve(__dirname, '.env') })
 const accountSid = process.env.TWILIO_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const callers = require('twilio')(accountSid, authToken);
@@ -89,13 +89,14 @@ app.get('/phoneNumber', (req, res) => {
 })
 
 // insert numbers intodb
-app.post('/phoneNumber', (req, res, next) => {
+app.post('/phoneNumber/:id', (req, res, next) => {
     try {
+        const phoneNumber = req.params.id;
         const newDate = new Date();
         const search = { 
-            phoneNumber: req.body.phoneNumber
+            phoneNumber: phoneNumber
         };
-        const data = { $set: {phoneNumber: req.body.phoneNumber} };
+        const data = { $set: {phoneNumber: phoneNumber, date: newDate } };
 
         dbo.collection("numbers").updateOne(search, data, { upsert: true }, function(err, res) {
             if (err) throw err;
