@@ -9,14 +9,16 @@ const authToken = process.env.TWILIO_AUTH_TOKEN;
 const callers = require('twilio')(accountSid, authToken);
 const callArr = [];
 const app = express();
+const cors = require('cors');
+
 var dbo;
 
-app.use(bodyParser.json())
+app.use(cors());
+app.use(bodyParser.json());
 
 MongoClient.connect(process.env.MONGO_URL, function(err, db) {
     if (err) throw err;
-    dbo = db.db("pez");
-
+    dbo = db.db("sendText");
 
     app.listen(process.env.PORT || 3000, () => {
         console.log('listening on 3000')
@@ -24,61 +26,13 @@ MongoClient.connect(process.env.MONGO_URL, function(err, db) {
 });
 
 
-// Twilio
-
-// get all numbers
-async function queryNumbers() {
-    const results = await callers.calls.list()
-    .then(calls => calls.forEach(c => callArr.push(c.from)));
-    await getNumbers();
-};
-
-// filter 
-function getNumbers() {
-    uniqueArray = callArr.filter(function(item, pos) {
-        return callArr.indexOf(item) == pos;
-    })
-
-    for(let i = 0; i < uniqueArray.length; i++) {
-        // insertNumber(uniqueArray[i]);
-        
-        console.log(i, ': ',uniqueArray[i]);
-    }
-    return uniqueArray;
-};
-
-// Load db
-function insertNumber(number) {
-    let newDate = new Date();
-    let data = { 
-        phoneNumber: number,
-        date: newDate
-    };
-
-    dbo.collection("numbers").insertOne(data, function(err, res) {
-        if (err) throw err;
-    });
-};
-
-// sends text messages 
-function sendText(number) {
-    callers.messages
-    .create({
-        body:  'PeZ - Antitrust 2020:  \n \n https://pezsociety.bandcamp.com/',
-        from: '+19528003312',
-        to: number
-     })
-    .then(message => console.log(message.sid));
-}   
-
-
 
 // Routes
 
 // get all numbers 
-app.get('/phoneNumber', (req, res) => {
+app.get('/customers', (req, res, next) => {
     try {
-        dbo.collection("numbers").find({}).toArray(function(err, result) {
+        dbo.collection("customers").find({}).toArray(function(err, result) {
             if (err) throw err;
             res.send(result)
             console.log(result);
@@ -88,17 +42,33 @@ app.get('/phoneNumber', (req, res) => {
     }
 })
 
-// insert numbers intodb
-app.post('/phoneNumber/:id', (req, res, next) => {
+app.get('/messages', (req, res, next) => {
     try {
-        const phoneNumber = req.params.id;
+        dbo.collection("messages").find({}).toArray(function(err, result) {
+            if (err) throw err;
+            res.send(result)
+            console.log(result);
+        });
+    } catch (err) {
+        next(err)
+    }
+})
+
+
+// insert customer intodb
+app.post('/customers', (req, res, next) => {
+    try {
         const newDate = new Date();
         const search = { 
-            phoneNumber: phoneNumber
+            phoneNumber: req.body.phoneNumber
         };
-        const data = { $set: {phoneNumber: phoneNumber, date: newDate } };
+        const data = { $set: {
+            name: req.body.name,
+            phoneNumber: req.body.phoneNumber,
+            dateCreated: newDate
+        } };
 
-        dbo.collection("numbers").updateOne(search, data, { upsert: true }, function(err, res) {
+        dbo.collection("customers").updateOne(search, data, { upsert: true }, function(err, res) {
             if (err) throw err;
         });
         res.sendStatus(200);
@@ -107,39 +77,38 @@ app.post('/phoneNumber/:id', (req, res, next) => {
     }
 });
 
-// delete number
-app.delete('/phoneNumber/:id', (req, res, next) => {
-    try {
-        var id = req.params.id;
-        console.log(id)
-        dbo.collection("numbers").remove({
-            phoneNumber: id
-        })
-        res.sendStatus(200);
-      } catch (err) {
-        next(err)
-    }
-});
 
-const testArr = ['+13522354609', '+13528702887', '+13522818053', '+19044421242']
-// get all numbers 
-app.get('/sendTexts', (req, res) => {
+app.post('/sendText', async (req, res, next) => {
     try {
-        // dbo.collection("numbers").find({}).toArray(function(err, result) {
-        //     if (err) throw err;
-        //     res.send(result)
-        //     console.log(result);
-        // });
-        testArr.forEach((num) => {
-            sendText(num)
-            // console.log(num);
-        })
+        const phoneNumber = req.body.phoneNumber;
+        const message = req.body.message;
+        sendText(phoneNumber, message);
+        res.sendStatus(200);
     } catch (err) {
         next(err)
     }
 })
 
+// sends text messages 
+function sendText(number, message ) {
+    callers.messages
+    .create({
+        body:  message,
+        from: '+19528003312',
+        to: number
+     })
+    .then(message => console.log(message.sid));
+}   
 
 
-
+function getMessage() {
+    try {
+        dbo.collection("messages").find({}).toArray(function(err, result) {
+            if (err) throw err;
+            return result[0].body
+        });
+    } catch (err) {
+        console.log(err)
+    }
+}
 
