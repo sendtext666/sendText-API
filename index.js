@@ -77,6 +77,29 @@ app.post('/customers', (req, res, next) => {
     }
 });
 
+// insert messsages intodb
+app.post('/messages', (req, res, next) => {
+    try {
+        const newDate = new Date();
+        const search = { 
+            name: req.body.name
+        };
+        const data = { $set: {
+            name: req.body.name,
+            body: req.body.body,
+            user: req.body.user,
+            dateCreated: newDate
+        } };
+
+        dbo.collection("messages").updateOne(search, data, { upsert: true }, function(err, res) {
+            if (err) throw err;
+        });
+        res.sendStatus(200);
+      } catch (err) {
+        next(err)
+    }
+});
+
 
 app.post('/sendText', async (req, res, next) => {
     try {
